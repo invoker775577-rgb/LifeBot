@@ -13,10 +13,11 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "I'm alive"
+    return "Я живой"
 
 def run_flask():
-    app.run(host='0.0.0.0', port=8080) # Порт для Render
+    # Порт 8080 для Render
+    app.run(host='0.0.0.0', port=8080)
 
 # --- НАСТРОЙКИ БОТА ---
 TOKEN = "8538630326:AAF9z-OU-So_b4YCw3buiAKyFHK3A10aiP8"
@@ -36,7 +37,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-# --- ГЕНЕРАЦИЯ КАРТИНКИ (ИСПРАВЛЕННАЯ) ---
+# --- ГЕНЕРАЦИЯ КАРТИНКИ ---
 def create_life_calendar(birth_date_str, lifespan_years):
     try:
         birth_date = datetime.strptime(birth_date_str, "%Y-%m-%d")
@@ -62,28 +63,36 @@ def create_life_calendar(birth_date_str, lifespan_years):
             if i < weeks_lived:
                 color = 'black'
             elif i == weeks_lived:
-                color = 'red' # Текущая неделя
+                color = 'red'
             else:
                 color = 'lightgray'
             draw.rectangle([x1, y1, x2, y2], fill=color)
 
-        # Используем английский текст, чтобы избежать проблем со шрифтами на сервере
-        text = f"Lived: {weeks_lived} weeks | Left: {total_weeks - weeks_lived} weeks"
+        # Текст на русском
+        text = f"Прожито: {weeks_lived} нед. | Осталось: {total_weeks - weeks_lived} нед."
         
-        # Попытка отрисовки стандартным шрифтом
-        draw.text((margin, height - 40), text, fill="black")
+        try:
+            # Путь к шрифту, который мы устанавливаем через Dockerfile
+            font_path = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
+            if os.path.exists(font_path):
+                font = ImageFont.truetype(font_path, 14)
+                draw.text((margin, height - 40), text, fill="black", font=font)
+            else:
+                draw.text((margin, height - 40), text, fill="black")
+        except:
+            draw.text((margin, height - 40), text, fill="black")
         
         filename = "calendar.png"
         img.save(filename)
         return filename
     except Exception as e:
-        print(f"Error in drawing: {e}")
+        print(f"Ошибка рисования: {e}")
         return None
 
 # --- КОМАНДЫ ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "Hi! Send your birth date: /set YYYY-MM-DD AGE\nExample: /set 2000-01-01 80")
+    bot.reply_to(message, "Привет! Я твой Календарь Жизни.\nВведи дату рождения и сколько лет планируешь прожить.\nПример: /set 2000-01-01 80")
 
 @bot.message_handler(commands=['set'])
 def set_user_data(message):
@@ -102,9 +111,9 @@ def set_user_data(message):
         img_path = create_life_calendar(date_str, lifespan)
         if img_path:
             with open(img_path, 'rb') as photo:
-                bot.send_photo(message.chat.id, photo, caption="Your Life Calendar is ready!")
+                bot.send_photo(message.chat.id, photo, caption="Твой персональный календарь готов!")
     except:
-        bot.reply_to(message, "Format error! Use: /set 2000-01-01 80")
+        bot.reply_to(message, "Ошибка! Используй формат: /set ГГГГ-ММ-ДД ВОЗРАСТ")
 
 # --- ПЛАНИРОВЩИК ---
 def send_weekly_notifications():
@@ -118,11 +127,9 @@ def send_weekly_notifications():
         img_path = create_life_calendar(bdate, life)
         if img_path:
             with open(img_path, 'rb') as photo:
-                # Каждую неделю он шлет НОВУЮ картинку
-                bot.send_photo(user_id, photo, caption="A new week has begun. Don't waste your time!")
+                bot.send_photo(user_id, photo, caption="Началась новая неделя. Твой календарь обновился!")
 
 def run_scheduler():
-    # Проверка каждую неделю в понедельник в 09:00
     schedule.every().monday.at("09:00").do(send_weekly_notifications)
     while True:
         schedule.run_pending()
@@ -132,11 +139,12 @@ def run_scheduler():
 if __name__ == '__main__':
     init_db()
     
-    # 1. Планировщик в фоне
+    # 1. Запуск рассылки
     threading.Thread(target=run_scheduler, daemon=True).start()
     
-    # 2. Бот в фоне
+    # 2. Запуск бота
     threading.Thread(target=lambda: bot.infinity_polling(timeout=20, long_polling_timeout=10), daemon=True).start()
     
-    # 3. Flask в основном потоке (важно для Render)
+    # 3. Запуск Flask
     run_flask()
+
