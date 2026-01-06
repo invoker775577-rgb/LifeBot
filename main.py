@@ -20,7 +20,7 @@ def run_flask():
     app.run(host='0.0.0.0', port=8080)
 
 # --- НАСТРОЙКИ БОТА ---
-TOKEN = "7591684135:AAFrF7dFKrJ18BFHJfFD-iYJ8mBl_32Y4qc"
+TOKEN = "7591684135:AAFDkHEuKUBn8pHePhbapuethmgOtMfUmu4"
 bot = telebot.TeleBot(TOKEN)
 
 # --- БАЗА ДАННЫХ ---
@@ -167,4 +167,5 @@ if __name__ == '__main__':
     
     # 3. Запуск Flask-сервера для Render (в основном потоке)
     run_flask()
+
 
